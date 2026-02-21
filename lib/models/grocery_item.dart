@@ -1,5 +1,3 @@
-import 'dart:core';
-
 import 'package:shopping_list/models/category.dart';
 
 class GroceryItem {
