@@ -9,6 +9,12 @@ class NewItem extends StatefulWidget {
 }
 
 class _NewItemState extends State<NewItem> {
+  final _formKey = GlobalKey<FormState>();
+
+  void _saveItem() {
+    _formKey.currentState!.validate();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -18,14 +24,18 @@ class _NewItemState extends State<NewItem> {
       body: Padding(
         padding: EdgeInsets.all(12),
         child: Form(
+          key: _formKey,
           child: Column(
             children: [
               TextFormField(
+                maxLength: 50,
                 decoration: const InputDecoration(
                   hintText: 'Enter your task name',
                 ),
                 validator: (String? value) {
-                  if (value == null || value.isEmpty) {
+                  if (value == null ||
+                      value.isEmpty ||
+                      value.trim().length <= 1) {
                     return 'Please enter some text';
                   }
                   return null;
@@ -36,8 +46,18 @@ class _NewItemState extends State<NewItem> {
                 children: [
                   Expanded(
                     child: TextFormField(
+                      keyboardType: TextInputType.number,
                       decoration: InputDecoration(label: Text('Quantity')),
                       initialValue: '1',
+                      validator: (String? value) {
+                        if (value == null ||
+                            value.isEmpty ||
+                            int.tryParse(value) == null ||
+                            int.tryParse(value)! <= 0) {
+                          return 'Please enter some number';
+                        }
+                        return null;
+                      },
                     ),
                   ),
                   SizedBox(
@@ -72,6 +92,18 @@ class _NewItemState extends State<NewItem> {
                       ),
                     ),
                   ),
+                ],
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _formKey.currentState!.reset();
+                    },
+                    child: Text('Reset'),
+                  ),
+                  ElevatedButton(onPressed: _saveItem, child: Text('Add item')),
                 ],
               ),
             ],
