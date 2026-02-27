@@ -15,6 +15,8 @@ class GroceryList extends StatefulWidget {
 class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
 
+  var _isLoading = true;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +50,7 @@ class _GroceryListState extends State<GroceryList> {
     }
     setState(() {
       _groceryItems = _loadedItems;
+      _isLoading = false;
     });
   }
 
@@ -55,7 +58,12 @@ class _GroceryListState extends State<GroceryList> {
     final newItem = await Navigator.of(
       context,
     ).push<GroceryItem>(MaterialPageRoute(builder: (ctx) => NewItem()));
-    _loadItems();
+    if (newItem == null) {
+      return;
+    }
+    setState(() {
+      _groceryItems.add(newItem);
+    });
   }
 
   void _removeItem(GroceryItem item) {
@@ -82,60 +90,72 @@ class _GroceryListState extends State<GroceryList> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Your Groceries'),
-        actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
-      ),
-      body: ListView.builder(
-        itemCount: _groceryItems.length,
-        itemBuilder: (ctx, index) {
-          return Dismissible(
-            key: ValueKey(_groceryItems[index].id),
-            background: Container(
-              decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.error.withValues(alpha: 0.75),
-                borderRadius: BorderRadius.circular(12),
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Your Groceries'),
+          actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
+        ),
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    } else {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Your Groceries'),
+          actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
+        ),
+        body: ListView.builder(
+          itemCount: _groceryItems.length,
+          itemBuilder: (ctx, index) {
+            return Dismissible(
+              key: ValueKey(_groceryItems[index].id),
+              background: Container(
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.error.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: Theme.of(context).cardTheme.margin,
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.only(left: 20, right: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                    Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
               ),
-              margin: Theme.of(context).cardTheme.margin,
-              alignment: Alignment.centerLeft,
-              padding: const EdgeInsets.only(left: 20, right: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Icon(
-                    Icons.delete,
-                    color: Colors.white,
-                  ),
-                  Icon(
-                    Icons.delete,
-                    color: Colors.white,
-                  ),
-                ],
+              onDismissed: (DismissDirection direction) {
+                if (direction == DismissDirection.endToStart ||
+                    direction == DismissDirection.startToEnd) {
+                  _removeItem(_groceryItems[index]);
+                }
+              },
+              child: ListTile(
+                title: Text(_groceryItems[index].name),
+                leading: Container(
+                  width: 24,
+                  height: 24,
+                  color: _groceryItems[index].category.color,
+                ),
+                trailing: Text(
+                  _groceryItems[index].quantity.toString(),
+                ),
               ),
-            ),
-            onDismissed: (DismissDirection direction) {
-              if (direction == DismissDirection.endToStart ||
-                  direction == DismissDirection.startToEnd) {
-                _removeItem(_groceryItems[index]);
-              }
-            },
-            child: ListTile(
-              title: Text(_groceryItems[index].name),
-              leading: Container(
-                width: 24,
-                height: 24,
-                color: _groceryItems[index].category.color,
-              ),
-              trailing: Text(
-                _groceryItems[index].quantity.toString(),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+            );
+          },
+        ),
+      );
+    }
   }
 }
