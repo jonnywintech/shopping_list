@@ -76,26 +76,83 @@ class _GroceryListState extends State<GroceryList> {
     });
   }
 
-  void _removeItem(GroceryItem item) {
+  void _removeItem(GroceryItem item) async {
     final index = _groceryItems.indexOf(item);
     setState(() {
       _groceryItems.remove(item);
     });
+
+    final url = Uri.https(
+      'flutter-prep-56665-default-rtdb.europe-west1.firebasedatabase.app',
+      'shopping-list/${item.id}.json',
+    );
+
+    final response = await http.delete(url);
+
+    if (response.statusCode >= 400) {
+      setState(() {
+        _groceryItems.insert(index, item);
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to delete item. Please try again later.'),
+        ),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Item deleted'),
+        content: const Text('Item deleted'),
         duration: const Duration(seconds: 2),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () {
-            setState(() {
-              _groceryItems.insert(index, item);
-            });
+            _undoRemoveItem(item, index);
           },
         ),
       ),
     );
+  }
+
+  void _undoRemoveItem(GroceryItem item, int index) async {
+    setState(() {
+      _groceryItems.insert(index, item);
+    });
+
+    final url = Uri.https(
+      'flutter-prep-56665-default-rtdb.europe-west1.firebasedatabase.app',
+      'shopping-list/${item.id}.json',
+    );
+
+    final response = await http.put(
+      url,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: json.encode({
+        'name': item.name,
+        'quantity': item.quantity,
+        'category': item.category.title,
+      }),
+    );
+
+    if (response.statusCode >= 400) {
+      setState(() {
+        _groceryItems.remove(item);
+      });
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to restore item.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -149,6 +206,12 @@ class _GroceryListState extends State<GroceryList> {
         );
       },
     );
+
+    if (_groceryItems.isEmpty) {
+      _content = const Center(
+        child: Text('No items added yet.'),
+      );
+    }
 
     if (_isLoading) {
       _content = const Center(
