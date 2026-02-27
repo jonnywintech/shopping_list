@@ -16,6 +16,7 @@ class _GroceryListState extends State<GroceryList> {
   List<GroceryItem> _groceryItems = [];
 
   var _isLoading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -29,6 +30,15 @@ class _GroceryListState extends State<GroceryList> {
       'shopping-list.json',
     );
     final response = await http.get(url);
+
+    if (response.statusCode >= 400) {
+      setState(() {
+        _error = 'Failed to load items. Please try again later.';
+        _isLoading = false;
+      });
+      return;
+    }
+
     final Map<String, dynamic> listData = json.decode(
       response.body,
     );
@@ -90,72 +100,76 @@ class _GroceryListState extends State<GroceryList> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Your Groceries'),
-          actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
-        ),
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    } else {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('Your Groceries'),
-          actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
-        ),
-        body: ListView.builder(
-          itemCount: _groceryItems.length,
-          itemBuilder: (ctx, index) {
-            return Dismissible(
-              key: ValueKey(_groceryItems[index].id),
-              background: Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.error.withValues(alpha: 0.75),
-                  borderRadius: BorderRadius.circular(12),
+    Widget _content = ListView.builder(
+      itemCount: _groceryItems.length,
+      itemBuilder: (ctx, index) {
+        return Dismissible(
+          key: ValueKey(_groceryItems[index].id),
+          background: Container(
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).colorScheme.error.withValues(alpha: 0.75),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: Theme.of(context).cardTheme.margin,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.only(left: 20, right: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(
+                  Icons.delete,
+                  color: Colors.white,
                 ),
-                margin: Theme.of(context).cardTheme.margin,
-                alignment: Alignment.centerLeft,
-                padding: const EdgeInsets.only(left: 20, right: 20),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
-                    Icon(
-                      Icons.delete,
-                      color: Colors.white,
-                    ),
-                  ],
+                Icon(
+                  Icons.delete,
+                  color: Colors.white,
                 ),
-              ),
-              onDismissed: (DismissDirection direction) {
-                if (direction == DismissDirection.endToStart ||
-                    direction == DismissDirection.startToEnd) {
-                  _removeItem(_groceryItems[index]);
-                }
-              },
-              child: ListTile(
-                title: Text(_groceryItems[index].name),
-                leading: Container(
-                  width: 24,
-                  height: 24,
-                  color: _groceryItems[index].category.color,
-                ),
-                trailing: Text(
-                  _groceryItems[index].quantity.toString(),
-                ),
-              ),
-            );
+              ],
+            ),
+          ),
+          onDismissed: (DismissDirection direction) {
+            if (direction == DismissDirection.endToStart ||
+                direction == DismissDirection.startToEnd) {
+              _removeItem(_groceryItems[index]);
+            }
           },
-        ),
+          child: ListTile(
+            title: Text(_groceryItems[index].name),
+            leading: Container(
+              width: 24,
+              height: 24,
+              color: _groceryItems[index].category.color,
+            ),
+            trailing: Text(
+              _groceryItems[index].quantity.toString(),
+            ),
+          ),
+        );
+      },
+    );
+
+    if (_isLoading) {
+      _content = const Center(
+        child: CircularProgressIndicator(),
       );
     }
+
+    if (_error != null) {
+      _content = Center(
+        child: Text(_error!),
+      );
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Your Groceries'),
+        actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
+      ),
+      body: Center(
+        child: _content,
+      ),
+    );
   }
 }
