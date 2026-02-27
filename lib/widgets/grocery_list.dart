@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'package:shopping_list/data/dummy_items.dart';
+import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/widgets/new_item.dart';
 
 class GroceryList extends StatefulWidget {
@@ -11,8 +10,40 @@ class GroceryList extends StatefulWidget {
 }
 
 class _GroceryListState extends State<GroceryList> {
-  void _addItem() {
-    Navigator.of(context).push(MaterialPageRoute(builder: (ctx) => NewItem()));
+  final List<GroceryItem> _groceryItems = [];
+  void _addItem() async {
+    final newItem = await Navigator.of(
+      context,
+    ).push<GroceryItem>(MaterialPageRoute(builder: (ctx) => NewItem()));
+
+    if (newItem == null) {
+      return;
+    }
+    setState(() {
+      _groceryItems.add(newItem);
+    });
+  }
+
+  void _removeItem(GroceryItem item) {
+    final index = _groceryItems.indexOf(item);
+    setState(() {
+      _groceryItems.remove(item);
+    });
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Item deleted'),
+        duration: Duration(seconds: 3),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            setState(() {
+              _groceryItems.insert(index, item);
+            });
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -23,18 +54,51 @@ class _GroceryListState extends State<GroceryList> {
         actions: [IconButton(onPressed: _addItem, icon: Icon(Icons.add))],
       ),
       body: ListView.builder(
-        itemCount: groceryItems.length,
-        itemBuilder: (ctx, index) => ListTile(
-          title: Text(groceryItems[index].name),
+        itemCount: _groceryItems.length,
+        itemBuilder: (ctx, index) {
+          return Dismissible(
+        background: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          margin: Theme.of(context).cardTheme.margin,
+          alignment: Alignment.centerLeft,
+          padding: const EdgeInsets.only(left: 20, right: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
+              Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
+            ],
+          ),
+        ),
+        onDismissed: (DismissDirection direction) {
+          if (direction == DismissDirection.endToStart ||
+              direction == DismissDirection.startToEnd) {
+            _removeItem(_groceryItems[index]);
+          }
+        },
+        key: ValueKey(_groceryItems[index]),
+        child: ListTile(
+          title: Text(_groceryItems[index].name),
           leading: Container(
             width: 24,
             height: 24,
-            color: groceryItems[index].category.color,
+            color: _groceryItems[index].category.color,
           ),
           trailing: Text(
-            groceryItems[index].quantity.toString(),
+            _groceryItems[index].quantity.toString(),
           ),
         ),
+      );
+        },
       ),
     );
   }
