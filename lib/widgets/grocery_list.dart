@@ -33,7 +33,7 @@ class _GroceryListState extends State<GroceryList> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Item deleted'),
-        duration: Duration(seconds: 3),
+        duration: const Duration(seconds: 2),
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () {
@@ -57,47 +57,49 @@ class _GroceryListState extends State<GroceryList> {
         itemCount: _groceryItems.length,
         itemBuilder: (ctx, index) {
           return Dismissible(
-        background: Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.error.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          margin: Theme.of(context).cardTheme.margin,
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.only(left: 20, right: 20),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Icon(
-                Icons.delete,
-                color: Colors.white,
+            key: ValueKey(_groceryItems[index].id),
+            background: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.error.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(12),
               ),
-              Icon(
-                Icons.delete,
-                color: Colors.white,
+              margin: Theme.of(context).cardTheme.margin,
+              alignment: Alignment.centerLeft,
+              padding: const EdgeInsets.only(left: 20, right: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                  Icon(
+                    Icons.delete,
+                    color: Colors.white,
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
-        onDismissed: (DismissDirection direction) {
-          if (direction == DismissDirection.endToStart ||
-              direction == DismissDirection.startToEnd) {
-            _removeItem(_groceryItems[index]);
-          }
-        },
-        key: ValueKey(_groceryItems[index]),
-        child: ListTile(
-          title: Text(_groceryItems[index].name),
-          leading: Container(
-            width: 24,
-            height: 24,
-            color: _groceryItems[index].category.color,
-          ),
-          trailing: Text(
-            _groceryItems[index].quantity.toString(),
-          ),
-        ),
-      );
+            ),
+            onDismissed: (DismissDirection direction) {
+              if (direction == DismissDirection.endToStart ||
+                  direction == DismissDirection.startToEnd) {
+                _removeItem(_groceryItems[index]);
+              }
+            },
+            child: ListTile(
+              title: Text(_groceryItems[index].name),
+              leading: Container(
+                width: 24,
+                height: 24,
+                color: _groceryItems[index].category.color,
+              ),
+              trailing: Text(
+                _groceryItems[index].quantity.toString(),
+              ),
+            ),
+          );
         },
       ),
     );
