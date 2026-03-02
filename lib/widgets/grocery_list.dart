@@ -39,6 +39,14 @@ class _GroceryListState extends State<GroceryList> {
       return;
     }
 
+    // depending of backend it gives different response when there is no data, so we need to check if it is null or not before parsing it
+    if (response.body == 'null') {
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
     final Map<String, dynamic> listData = json.decode(
       response.body,
     );
