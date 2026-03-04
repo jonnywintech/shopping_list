@@ -1,9 +1,9 @@
-import 'dart:convert';
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:shopping_list/data/categories.dart';
 import 'package:shopping_list/models/grocery_item.dart';
 import 'package:shopping_list/widgets/new_item.dart';
-import 'package:http/http.dart' as http;
 
 class GroceryList extends StatefulWidget {
   const GroceryList({super.key});
@@ -24,58 +24,48 @@ class _GroceryListState extends State<GroceryList> {
     _loadItems();
   }
 
-  void _loadItems() async {
-    final url = Uri.https(
-      'flutter-prep-56665-default-rtdb.europe-west1.firebasedatabase.app',
-      'shopping-list.json',
-    );
+  late Box _box;
 
+  void _loadItems() {
     try {
-      final response = await http.get(url);
-
-      if (response.statusCode >= 400) {
-        setState(() {
-          _error = 'Failed to load items. Please try again later.';
-          _isLoading = false;
-        });
-        return;
-      }
-
-      // depending of backend it gives different response when there is no data, so we need to check if it is null or not before parsing it
-      if (response.body == 'null') {
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final Map<String, dynamic> listData = json.decode(
-        response.body,
-      );
-      final List<GroceryItem> _loadedItems = [];
-      for (final item in listData.entries) {
+      _box = Hive.box('grocery_items');
+      final List<GroceryItem> loadedItems = [];
+      for (int i = 0; i < _box.length; i++) {
+        final item = Map<String, dynamic>.from(_box.getAt(i));
         final category = categories.entries
             .firstWhere(
-              (catItem) => catItem.value.title == item.value['category'],
+              (catItem) => catItem.value.title == item['category'],
             )
             .value;
-        _loadedItems.add(
+        loadedItems.add(
           GroceryItem(
-            id: item.key,
-            name: item.value['name'],
-            quantity: item.value['quantity'],
+            id: item['id'],
+            name: item['name'],
+            quantity: item['quantity'],
             category: category,
           ),
         );
       }
       setState(() {
-        _groceryItems = _loadedItems;
+        _groceryItems = loadedItems;
         _isLoading = false;
       });
     } catch (e) {
       setState(() {
         _error = 'Failed to load items. Please try again later.';
         _isLoading = false;
+      });
+    }
+  }
+
+  void _saveItems() {
+    _box.clear();
+    for (final item in _groceryItems) {
+      _box.add({
+        'id': item.id,
+        'name': item.name,
+        'quantity': item.quantity,
+        'category': item.category.title,
       });
     }
   }
@@ -90,41 +80,24 @@ class _GroceryListState extends State<GroceryList> {
     setState(() {
       _groceryItems.add(newItem);
     });
+    _saveItems();
   }
 
-  void _removeItem(GroceryItem item) async {
+  void _removeItem(GroceryItem item) {
     final index = _groceryItems.indexOf(item);
     setState(() {
       _groceryItems.remove(item);
     });
-
-    final url = Uri.https(
-      'flutter-prep-56665-default-rtdb.europe-west1.firebasedatabase.app',
-      'shopping-list/${item.id}.json',
-    );
-
-    final response = await http.delete(url);
-
-    if (response.statusCode >= 400) {
-      setState(() {
-        _groceryItems.insert(index, item);
-      });
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to delete item. Please try again later.'),
-        ),
-      );
-      return;
-    }
+    _saveItems();
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
+
+    const duration = Duration(seconds: 2);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: const Text('Item deleted'),
-        duration: const Duration(seconds: 2),
+        duration: duration,
         action: SnackBarAction(
           label: 'Undo',
           onPressed: () {
@@ -133,42 +106,20 @@ class _GroceryListState extends State<GroceryList> {
         ),
       ),
     );
+
+    Timer(duration, () {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      }
+    });
   }
 
-  void _undoRemoveItem(GroceryItem item, int index) async {
+  void _undoRemoveItem(GroceryItem item, int index) {
     setState(() {
       _groceryItems.insert(index, item);
     });
-
-    final url = Uri.https(
-      'flutter-prep-56665-default-rtdb.europe-west1.firebasedatabase.app',
-      'shopping-list/${item.id}.json',
-    );
-
-    final response = await http.put(
-      url,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: json.encode({
-        'name': item.name,
-        'quantity': item.quantity,
-        'category': item.category.title,
-      }),
-    );
-
-    if (response.statusCode >= 400) {
-      setState(() {
-        _groceryItems.remove(item);
-      });
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to restore item.'),
-        ),
-      );
-    }
+    _saveItems();
+    ScaffoldMessenger.of(context).clearSnackBars();
   }
 
   @override
